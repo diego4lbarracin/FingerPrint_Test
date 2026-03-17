@@ -1,0 +1,18 @@
+Place these DigitalPersona runtime files here with these exact names:
+
+websdk.client.bundle.min.js
+websdk.compat.js
+dp.core.bundle.js
+dp.devices.bundle.js
+
+Expected final paths:
+frontend/public/websdk.client.bundle.min.js
+frontend/public/websdk.compat.js
+frontend/public/dp.core.bundle.js
+frontend/public/dp.devices.bundle.js
+
+`websdk.client.bundle.min.js` comes from the DigitalPersona SDK/client installation.
+`websdk.compat.js` is included in this project and patches older WebSdk runtime APIs.
+`dp.core.bundle.js` and `dp.devices.bundle.js` can be copied from:
+frontend/node_modules/@digitalpersona/core/dist/es5.bundles/index.umd.js
+frontend/node_modules/@digitalpersona/devices/dist/es5.bundles/index.umd.js
