@@ -1,36 +1,28 @@
 create extension if not exists pgcrypto;
 
-create table if not exists app_users (
+create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  last_name text not null,
+  lastname text not null,
   email text not null,
+  fingerprint_template text,
+  enrolled_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 
-create unique index if not exists app_users_email_lower_idx on app_users ((lower(email)));
+create unique index if not exists users_email_lower_idx
+  on public.users ((lower(email)));
 
-create table if not exists fingerprint_templates (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references app_users(id) on delete cascade,
-  sample_format integer not null,
-  template_data text not null,
-  template_sha256 text not null,
-  device_id text,
-  quality_code integer,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists fingerprint_templates_hash_idx on fingerprint_templates (template_sha256);
-
-create table if not exists auth_attempts (
+create table if not exists public.auth_logs (
   id bigint generated always as identity primary key,
-  matched_user_id uuid references app_users(id) on delete set null,
-  probe_template_sha256 text not null,
-  match_score double precision,
-  success boolean not null default false,
-  created_at timestamptz not null default now()
+  matched_user_id uuid references public.users(id) on delete set null,
+  match_score double precision not null,
+  success boolean not null,
+  attempted_at timestamptz not null default now()
 );
 
-create index if not exists auth_attempts_created_at_idx on auth_attempts (created_at desc);
-create index if not exists auth_attempts_success_idx on auth_attempts (success);
+create index if not exists auth_logs_attempted_at_idx
+  on public.auth_logs (attempted_at desc);
+
+create index if not exists auth_logs_success_idx
+  on public.auth_logs (success);

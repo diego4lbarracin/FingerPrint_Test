@@ -28,6 +28,37 @@ function App() {
   const modeRef = useRef(null);
   const qualityRef = useRef(null);
 
+  const extractPngSample = (event) => {
+    const firstSample = event?.samples?.[0];
+    let value = "";
+
+    if (typeof firstSample === "string") {
+      value = firstSample;
+    } else if (firstSample && typeof firstSample === "object") {
+      value = firstSample.Data || firstSample.data || "";
+    }
+
+    if (!value && typeof event?.sample === "string") {
+      value = event.sample;
+    }
+
+    if (typeof value !== "string") return "";
+    return value.trim();
+  };
+
+  const parseApiResponse = async (response) => {
+    const text = await response.text();
+    let data = {};
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: text };
+      }
+    }
+    return data;
+  };
+
   const registerReady = useMemo(
     () =>
       registerForm.name &&
@@ -100,26 +131,27 @@ function App() {
         };
 
         const onSamplesAcquired = async (event) => {
-          const payload = {
-            deviceId: event.deviceId,
-            sampleFormat: event.sampleFormat,
-            quality: qualityRef.current,
-            capturedAt: new Date().toISOString(),
-            samples: event.samples.map((sample) => ({
-              data: sample.Data,
-              header: sample.Header,
-            })),
-          };
+          const pngSample = extractPngSample(event);
+          if (!pngSample) {
+            setCaptureStatus(
+              "Sample acquired but PNG data was empty. Check sample format and reader compatibility.",
+            );
+            return;
+          }
+
+          setCaptureStatus(
+            `Fingerprint sample acquired (${pngSample.length} chars).`,
+          );
 
           if (modeRef.current === "register") {
-            setRegisterFingerprint(payload);
+            setRegisterFingerprint(pngSample);
             setRegisterMessage(
               "Fingerprint captured for enrollment. Submit the form to save the user.",
             );
           }
 
           if (modeRef.current === "authenticate") {
-            await authenticate(payload);
+            await authenticate(pngSample);
           }
 
           try {
@@ -197,7 +229,7 @@ function App() {
     modeRef.current = mode;
 
     try {
-      await reader.startAcquisition(sampleFormat.Intermediate);
+      await reader.startAcquisition(sampleFormat.PngImage);
     } catch (error) {
       modeRef.current = null;
       setIsAcquiring(false);
@@ -229,21 +261,23 @@ function App() {
     setRegisterMessage("Saving user...");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/enroll`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...registerForm,
-          fingerprint: registerFingerprint,
+          name: registerForm.name,
+          lastname: registerForm.lastName,
+          email: registerForm.email,
+          fingerprintTemplate: registerFingerprint,
         }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse(response);
       if (!response.ok) {
-        throw new Error(data.error || "Registration failed");
+        throw new Error(data.error || data.message || "Registration failed");
       }
 
-      setRegisterMessage(`User ${data.user.email} registered successfully.`);
+      setRegisterMessage(`User ${data.email} registered successfully.`);
       setRegisterForm({ name: "", lastName: "", email: "" });
       setRegisterFingerprint(null);
     } catch (error) {
@@ -259,13 +293,13 @@ function App() {
     setAuthResult(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/authenticate`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/fingerprint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fingerprint: fingerprintPayload }),
+        body: JSON.stringify({ fingerprintTemplate: fingerprintPayload }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse(response);
       if (!response.ok) {
         if (data.authenticated === false) {
           setAuthResult(data);
@@ -276,7 +310,8 @@ function App() {
       }
 
       setAuthResult(data);
-      setAuthMessage(`Authenticated: ${data.user.name} ${data.user.lastName}`);
+      const matchedLastName = data.user.lastname || data.user.lastName || "";
+      setAuthMessage(`Authenticated: ${data.user.name} ${matchedLastName}`);
     } catch (error) {
       setAuthMessage(`Authentication failed: ${error.message}`);
     } finally {
@@ -421,7 +456,8 @@ function App() {
               <p>Threshold: {authResult.threshold}</p>
               {authResult.user && (
                 <p>
-                  User: {authResult.user.name} {authResult.user.lastName} (
+                  User: {authResult.user.name}{" "}
+                  {authResult.user.lastname || authResult.user.lastName} (
                   {authResult.user.email})
                 </p>
               )}

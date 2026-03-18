@@ -3,7 +3,7 @@
 Full-stack example using:
 
 - Frontend: React + DigitalPersona JavaScript SDK (`@digitalpersona/devices`)
-- Backend: Node.js + Express
+- Backend: Go + Gin + SourceAFIS (`github.com/jtejido/sourceafis`)
 - Database: Supabase PostgreSQL
 
 ## What this app does
@@ -11,27 +11,26 @@ Full-stack example using:
 1. Create User
 
 - Collects `name`, `lastname`, `email`
-- Captures fingerprint sample from the U.are.U 4500 reader
-- Stores user and fingerprint template in Supabase
+- Captures fingerprint sample from the U.are.U 4500 reader in `SampleFormat.PngImage`
+- Converts PNG to SourceAFIS search template on the Go backend
+- Stores only the serialized SourceAFIS template in Supabase
 
 2. Authenticate User
 
 - Captures a live fingerprint sample
-- Compares against enrolled templates
-- Returns authenticated user when score is above threshold
+- Converts probe PNG to SourceAFIS template on the Go backend
+- Runs 1:N matching against all enrolled templates
+- Uses threshold `40` on SourceAFIS score scale
+- Returns authenticated user if best score exceeds threshold
 
 ## Important biometric note
 
-This demo uses a custom similarity strategy on captured sample payloads. It is useful for prototyping flow and storage, but it is **not equivalent** to a certified biometric matcher.
-
-For production-grade biometric verification, use:
-
-- DigitalPersona server-side authentication/enrollment services, or
-- A dedicated biometric matching engine validated for your compliance requirements.
+This implementation now uses SourceAFIS for template extraction and matching in the backend.
 
 ## Prerequisites
 
 - Node.js 20+
+- Go 1.25+
 - DigitalPersona local runtime/service installed (you said this is already installed)
 - U.are.U 4500 reader connected
 - Supabase project created
@@ -64,8 +63,8 @@ Copy `backend/.env.example` to `backend/.env` and set:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `FRONTEND_ORIGIN` (for local dev, default `http://localhost:5173`)
-- `MATCH_THRESHOLD` (default `0.72`)
+- `FRONTEND_ORIGIN` (for local dev, default `http://localhost:5173,http://127.0.0.1:5173`)
+- `MATCH_THRESHOLD` (default `40`)
 
 ### Frontend
 
@@ -79,8 +78,8 @@ Terminal 1:
 
 ```bash
 cd backend
-npm install
-npm run dev
+go mod tidy
+go run .
 ```
 
 Terminal 2:
@@ -96,28 +95,18 @@ Open `http://localhost:5173`.
 ## API endpoints
 
 - `GET /api/health`
-- `POST /api/users/register`
-- `POST /api/users/authenticate`
+- `GET /api/users`
+- `POST /api/users/enroll`
+- `POST /api/auth/fingerprint`
 
 ### Register payload
 
 ```json
 {
   "name": "John",
-  "lastName": "Doe",
+  "lastname": "Doe",
   "email": "john@company.com",
-  "fingerprint": {
-    "deviceId": "reader-id",
-    "sampleFormat": 2,
-    "quality": 0,
-    "capturedAt": "2026-03-17T00:00:00.000Z",
-    "samples": [
-      {
-        "data": "base64url-sample",
-        "header": {}
-      }
-    ]
-  }
+  "fingerprintTemplate": "<base64 PNG>"
 }
 ```
 
@@ -125,20 +114,16 @@ Open `http://localhost:5173`.
 
 ```json
 {
-  "fingerprint": {
-    "deviceId": "reader-id",
-    "sampleFormat": 2,
-    "quality": 0,
-    "capturedAt": "2026-03-17T00:00:00.000Z",
-    "samples": [
-      {
-        "data": "base64url-sample",
-        "header": {}
-      }
-    ]
-  }
+  "fingerprintTemplate": "<base64 PNG>"
 }
 ```
+
+## Supabase tables
+
+The SQL in `supabase/schema.sql` creates:
+
+- `users`: enrollment info and serialized SourceAFIS template (`fingerprint_template`)
+- `auth_logs`: every fingerprint auth attempt with score and success flag
 
 ## Deployment notes
 
