@@ -127,7 +127,12 @@ The SQL in `supabase/schema.sql` creates:
 
 ## Deployment notes
 
-- Frontend can be deployed to Vercel, Render static site, or GitHub Pages.
-- Backend should be deployed as a server (Render/Fly/railway/etc.) with secure env vars.
+- Frontend is configured for GitHub Pages through `.github/workflows/deploy-frontend-pages.yml`.
+- Set repository variable or secret `VITE_API_BASE_URL` to your deployed backend URL before triggering the workflow.
+- For project pages (`https://<owner>.github.io/<repo>/`), Vite base path is auto-resolved in CI from the repository name.
+- A `404.html` SPA fallback is generated from `index.html` during deployment so deep links route to the React app.
+- Backend should be deployed as a server (Render/Fly/Railway/etc.) with secure env vars.
+- In backend env, set `FRONTEND_ORIGIN` to the hosted site origin, for example `https://<owner>.github.io`.
+- Ensure `VITE_API_BASE_URL` uses HTTPS; GitHub Pages is HTTPS and mixed-content HTTP API calls may be blocked by the browser.
 - The reader capture requires DigitalPersona local services on the machine that runs the browser.
   This means remote cloud users cannot directly access local hardware unless you provide an edge/desktop bridge architecture.
