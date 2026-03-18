@@ -22,7 +22,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
     defaults:
       run:
         working-directory: frontend
@@ -46,11 +46,15 @@ jobs:
       - name: Validate frontend env
         run: |
           if [ -z "${VITE_API_BASE_URL}" ]; then
-            echo "VITE_API_BASE_URL is empty. Set repository variable or secret VITE_API_BASE_URL before deploying."
+            echo "VITE_API_BASE_URL is empty. Set repository secret VITE_API_BASE_URL before deploying."
             exit 1
           fi
           if [[ "${VITE_API_BASE_URL}" != https://* ]]; then
             echo "Warning: VITE_API_BASE_URL is not HTTPS. Browsers may block mixed content from a HTTPS GitHub Pages site."
+          fi
+          if [[ "${VITE_API_BASE_URL}" == *".onrender.com:4000"* ]]; then
+            echo "VITE_API_BASE_URL should not include :4000 for Render public URLs. Use https://<service>.onrender.com"
+            exit 1
           fi
 
       - name: Build frontend

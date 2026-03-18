@@ -128,7 +128,7 @@ The SQL in `supabase/schema.sql` creates:
 ## Deployment notes
 
 - Frontend is configured for GitHub Pages through `.github/workflows/deploy-frontend-pages.yml`.
-- Set repository variable or secret `VITE_API_BASE_URL` to your deployed backend URL before triggering the workflow.
+- Set repository secret `VITE_API_BASE_URL` to your deployed backend URL before triggering the workflow.
 - For project pages (`https://<owner>.github.io/<repo>/`), Vite base path is auto-resolved in CI from the repository name.
 - A `404.html` SPA fallback is generated from `index.html` during deployment so deep links route to the React app.
 - Backend should be deployed as a server (Render/Fly/Railway/etc.) with secure env vars.
