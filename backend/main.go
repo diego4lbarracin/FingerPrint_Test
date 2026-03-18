@@ -406,10 +406,14 @@ func corsMiddleware(originList string) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		originAllowed := len(allowed) == 0 || allowed[origin] || (allowAnyLoopbackOrigin && isLoopbackOrigin(origin))
-		if origin != "" && originAllowed {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-			c.Writer.Header().Set("Vary", "Origin")
+		if c.Request.URL.Path == "/api/health" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		} else {
+			originAllowed := len(allowed) == 0 || allowed[origin] || (allowAnyLoopbackOrigin && isLoopbackOrigin(origin))
+			if origin != "" && originAllowed {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+				c.Writer.Header().Set("Vary", "Origin")
+			}
 		}
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, apikey")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
