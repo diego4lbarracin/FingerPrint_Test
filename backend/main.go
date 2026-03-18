@@ -112,7 +112,7 @@ func main() {
 	router := gin.Default()
 	router.Use(corsMiddleware(strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))))
 
-	router.GET("/api/health", func(c *gin.Context) {
+	router.HEAD("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true, "threshold": api.threshold})
 	})
 

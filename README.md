@@ -94,7 +94,7 @@ Open `http://localhost:5173`.
 
 ## API endpoints
 
-- `GET /api/health`
+- `HEAD /api/health`
 - `GET /api/users`
 - `POST /api/users/enroll`
 - `POST /api/auth/fingerprint`
